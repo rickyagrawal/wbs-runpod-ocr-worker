@@ -1,0 +1,7 @@
+{
+  "input": {
+    "image_path": "/app/sample.jpg",
+    "max_new_tokens": 1024
+  }
+}
+
