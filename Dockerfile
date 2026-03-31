@@ -1,8 +1,4 @@
-FROM runpod/base:0.6.3-cuda11.8.0
-
-# Match RunPod's current worker template defaults.
-RUN ln -sf "$(which python3.11)" /usr/local/bin/python && \
-    ln -sf "$(which python3.11)" /usr/local/bin/python3
+FROM pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
 
 ARG MODEL_ID=lightonai/LightOnOCR-2-1B
 ARG MODEL_DIR=/opt/models/lightonocr-2-1b
@@ -13,9 +9,13 @@ ENV MODEL_PATH=${MODEL_DIR}
 ENV HF_HOME=/opt/hf
 ENV TRANSFORMERS_CACHE=/opt/hf
 ENV HF_HUB_ENABLE_HF_TRANSFER=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PIP_NO_CACHE_DIR=1
 
 COPY requirements.txt /requirements.txt
-RUN uv pip install --upgrade -r /requirements.txt --no-cache-dir --system
+RUN python -m pip install --upgrade pip && \
+    python -m pip install -r /requirements.txt
 
 RUN python - <<'PY'
 import os

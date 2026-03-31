@@ -65,6 +65,7 @@ Environment variables:
 
 - `MODE_TO_RUN=serverless`
 - `MODEL_ID=lightonai/LightOnOCR-2-1B`
+- `MODEL_PATH=/opt/models/lightonocr-2-1b`
 - optional `MAX_NEW_TOKENS=1024`
 
 ## Example serverless request
@@ -83,3 +84,19 @@ Environment variables:
 - This is the correct Serverless worker shape. It avoids Pod-time `pip install` and other runtime bootstrap hacks.
 - If cold starts are too slow, the next step is model caching or baking the model into the image.
 
+## Cold-start probe
+
+This repo includes an async probe that creates a temporary endpoint, pins it to one GPU type and one data center, submits one job, polls until terminal status, and deletes the endpoint:
+
+```bash
+RUNPOD_API_KEY=... python scripts/measure_cold_start.py \
+  --image-path /path/to/vishal-license.jpg \
+  --gpu-type "NVIDIA L4" \
+  --data-center US-TX-1
+```
+
+This is the right way to test low-budget fallback behavior because it avoids `runsync` cold-start weirdness and measures:
+
+- seconds to ready
+- seconds to first async submit
+- seconds to terminal result
