@@ -15,13 +15,21 @@ from transformers import LightOnOcrForConditionalGeneration, LightOnOcrProcessor
 
 
 MODEL_ID = os.environ.get("MODEL_ID", "lightonai/LightOnOCR-2-1B")
+MODEL_PATH = os.environ.get("MODEL_PATH", "")
 MODE_TO_RUN = os.environ.get("MODE_TO_RUN", "serverless")
 DEFAULT_MAX_NEW_TOKENS = int(os.environ.get("MAX_NEW_TOKENS", "1024"))
+PRELOAD_MODEL = os.environ.get("PRELOAD_MODEL", "1") == "1"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DTYPE = torch.bfloat16 if DEVICE == "cuda" else torch.float32
 
 _MODEL = None
 _PROCESSOR = None
+
+
+def resolve_model_source() -> str:
+    if MODEL_PATH and Path(MODEL_PATH).exists():
+        return MODEL_PATH
+    return MODEL_ID
 
 
 def load_model():
@@ -31,12 +39,22 @@ def load_model():
         return _MODEL, _PROCESSOR
 
     started = time.time()
-    print(f"Loading model={MODEL_ID} device={DEVICE} dtype={DTYPE}", flush=True)
+    model_source = resolve_model_source()
+    local_files_only = model_source == MODEL_PATH and bool(MODEL_PATH)
+    print(
+        f"Loading model_source={model_source} device={DEVICE} dtype={DTYPE} local_files_only={local_files_only}",
+        flush=True,
+    )
     _MODEL = LightOnOcrForConditionalGeneration.from_pretrained(
-        MODEL_ID,
+        model_source,
         torch_dtype=DTYPE,
+        low_cpu_mem_usage=True,
+        local_files_only=local_files_only,
     ).to(DEVICE)
-    _PROCESSOR = LightOnOcrProcessor.from_pretrained(MODEL_ID)
+    _PROCESSOR = LightOnOcrProcessor.from_pretrained(
+        model_source,
+        local_files_only=local_files_only,
+    )
     _MODEL.eval()
     print(f"Model loaded in {time.time() - started:.2f}s", flush=True)
     return _MODEL, _PROCESSOR
@@ -119,7 +137,8 @@ def run_local():
 
 if __name__ == "__main__":
     if MODE_TO_RUN == "serverless":
+        if PRELOAD_MODEL:
+            load_model()
         runpod.serverless.start({"handler": handler})
     else:
         run_local()
-

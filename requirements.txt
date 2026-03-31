@@ -5,3 +5,4 @@ pillow>=10.0.0
 sentencepiece>=0.2.0
 safetensors>=0.4.0
 torchvision
+hf_transfer
